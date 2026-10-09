@@ -1,0 +1,847 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Speed Read</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500&family=Barlow+Semi+Condensed:wght@400;500;600&family=Literata:opsz,wght@7..72,400&display=swap">
+<style>
+/* Layout: one e-ink panel, six ruled rows, left-anchored word between two measuring rules; text entry sits below the panel. */
+:root{
+  --desk:#c9cbc6; --ink:#24272a; --ink-soft:#5d6163; --rule:#8d918f;
+  --paper-0:#d6dadd; --paper-20:#dadbd9; --paper-40:#dcdcd6;
+  --f-word:"Literata",Georgia,"Times New Roman",serif;
+  --f-label:"Barlow Semi Condensed","Arial Narrow",Arial,sans-serif;
+  --f-num:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --desk:#131514; --ink:#cdd0ca; --ink-soft:#8b8f8a; --rule:#5c605c;
+  --paper-0:#1a1d20; --paper-20:#1c1d1c; --paper-40:#1f1e1a; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --desk:#131514; --ink:#cdd0ca; --ink-soft:#8b8f8a; --rule:#5c605c;
+  --paper-0:#1a1d20; --paper-20:#1c1d1c; --paper-40:#1f1e1a; color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--desk);color:var(--ink);font-family:var(--f-label);font-size:13px;
+  padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:860px;margin-inline:auto;display:flex;flex-direction:column;gap:28px}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;
+  text-transform:uppercase;letter-spacing:.12em}
+button:hover{text-decoration:underline;text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+/* ---------- panel ---------- */
+.device{--paper:var(--paper-40);background:var(--paper);border:1px solid var(--rule);
+  padding:14px clamp(14px,3.5vw,30px) 18px;display:flex;flex-direction:column;
+  text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:500}
+.device[data-lut="0"]{--paper:var(--paper-0)}
+.device[data-lut="20"]{--paper:var(--paper-20)}
+
+.r1{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+  border-bottom:1px solid var(--ink);position:relative;padding-bottom:7px}
+.views{display:flex;flex-wrap:wrap;gap:4px 22px}
+.views button{position:relative;font-weight:500;color:var(--ink-soft)}
+.views button:hover{text-decoration:none;color:var(--ink)}
+.views button::before{content:"";display:inline-block;width:7px;height:7px;border:1px solid currentColor;margin-right:8px}
+.views button[aria-selected="true"]{color:var(--ink)}
+.views button[aria-selected="true"]::before{background:var(--ink)}
+.views button[aria-selected="true"]::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:3px;background:var(--ink)}
+.r1 .title{text-align:right;min-width:0;overflow-wrap:anywhere;font-weight:600}
+
+.r2{display:flex;flex-wrap:wrap;gap:6px 0;align-items:center;padding-block:9px;font-size:10.5px}
+.r2 button b{font-weight:600}
+.r2 .sep{margin-inline:10px;color:var(--ink-soft)}
+.r2 .count{margin-left:auto;color:var(--ink-soft);padding-left:12px}
+
+/* ---------- reading stage ---------- */
+.stage{position:relative;height:clamp(190px,36vh,330px);margin-top:26px;cursor:pointer;
+  --anchor:10%;user-select:none;-webkit-tap-highlight-color:transparent}
+.stage[data-align="C"]{--anchor:50%}
+.stage[data-align="R"]{--anchor:90%}
+.ruler{position:absolute;left:0;right:0;height:11px;
+  border-inline:1px solid var(--ink);
+  background:
+    linear-gradient(var(--ink),var(--ink)) 0 50%/100% 1px no-repeat,
+    repeating-linear-gradient(90deg,var(--ink) 0 1px,transparent 1px 10%) 0 50%/100% 9px no-repeat,
+    repeating-linear-gradient(90deg,var(--ink) 0 1px,transparent 1px 2%) 0 50%/100% 5px no-repeat}
+.ruler.top{top:14px}
+.ruler.bot{bottom:14px}
+.ruler i{position:absolute;left:var(--anchor);transform:translateX(-50%);width:0;height:0;
+  border-inline:5px solid transparent}
+.ruler.top i{top:-11px;border-top:8px solid var(--ink)}
+.ruler.bot i{bottom:-11px;border-bottom:8px solid var(--ink)}
+.word{position:absolute;top:50%;left:var(--anchor);transform:translateY(-52%);
+  font-family:var(--f-word);font-size:clamp(34px,7.2vw,62px);line-height:1.1;white-space:nowrap;
+  text-transform:none;letter-spacing:0;font-weight:400}
+.stage[data-align="C"] .word{transform:translate(-50%,-52%)}
+.stage[data-align="R"] .word{left:auto;right:calc(100% - var(--anchor))}
+
+/* ---------- stats ---------- */
+.r4{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+.stat .lab{font-size:10px}
+.stat .val{font-family:var(--f-num);font-size:clamp(30px,6.4vw,44px);line-height:1;letter-spacing:0;
+  font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:5px;margin-top:3px;white-space:nowrap}
+.stat .val small{font-family:var(--f-label);font-size:10px;letter-spacing:.12em;font-weight:500}
+.stat .adj{display:flex;gap:14px;margin-top:5px;font-size:10px;color:var(--ink-soft)}
+.stat .adj button{padding:2px 0}
+
+.r5{margin-top:14px}
+.r5 .head{display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.bar{height:13px;border:1px solid var(--ink);padding:2px;cursor:pointer}
+.bar .fill{height:100%;width:0;
+  background:repeating-linear-gradient(90deg,var(--ink) 0 5px,transparent 5px 7px)}
+
+.r6{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px 20px;margin-top:20px}
+.live{border:1px solid var(--ink);padding:4px 9px 4px 8px;font-weight:600;font-size:10.5px}
+.live.on{background:var(--ink);color:var(--paper)}
+.live:hover{text-decoration:none}
+.nav{display:flex;flex-wrap:wrap;gap:4px 0;font-size:10.5px}
+.nav .sep{margin-inline:10px;color:var(--ink-soft)}
+
+/* ---------- focal read ---------- */
+.r2 .fo{display:flex;align-items:center}
+.focal{display:none}
+.stage.fmode{height:auto;min-height:0;display:flex;align-items:center;padding-block:42px;cursor:default}
+.stage.fmode .word{display:none}
+.stage.fmode .focal{display:block;position:relative;width:100%;overflow-y:auto;padding-right:12px;
+  font-family:var(--f-word);font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-soft);
+  overflow-wrap:anywhere;scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
+.stage[data-align="C"] .focal{text-align:center}
+.stage[data-align="R"] .focal{text-align:right}
+.focal span{cursor:pointer}
+.focal span.hl{background:var(--ink);color:var(--paper)}
+.focal span.hl.j{box-shadow:.32em 0 0 var(--ink)}
+.focal.blank span.hl{background:none;color:inherit;box-shadow:none}
+.focal i.pb{display:block;height:.6em}
+
+/* ---------- full page ---------- */
+.device.full{position:fixed;inset:0;z-index:10;border:0;overflow:auto;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.device.full .stage{flex:1 0 auto;height:auto;min-height:180px}
+.device.full .word{font-size:clamp(38px,9.5vw,120px)}
+body.locked{overflow:hidden}
+
+/* ---------- tabs and PDF ---------- */
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--rule)}
+.tabs button{font-size:11px;font-weight:600;padding:0 0 6px;margin-bottom:-2px;border-bottom:3px solid transparent;color:var(--ink-soft)}
+.tabs button:hover{text-decoration:none;color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.src{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch}
+.entry.pdf .src{grid-template-columns:minmax(220px,300px) minmax(0,1fr)}
+.entry.pdf textarea{min-height:340px}
+@media (max-width:640px){ .entry.pdf .src{grid-template-columns:minmax(0,1fr)} }
+.side{display:flex;flex-direction:column;gap:10px;min-width:0}
+.side h3{margin:4px 0 0;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.side p{margin:0}
+#pdfBody{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pick{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.pick .note{min-width:0;overflow-wrap:anywhere}
+.vh{position:absolute;opacity:0;width:1px;height:1px;padding:0;border:0}
+.filebtn{border:1px solid var(--ink);padding:6px 12px;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.vh:focus-visible + .filebtn{outline:2px solid var(--ink);outline-offset:3px}
+.toc{list-style:none;margin:0;padding:0;border:1px solid var(--rule);max-height:250px;overflow:auto;background:var(--paper-20)}
+.toc button{display:flex;justify-content:space-between;align-items:baseline;gap:10px;width:100%;text-align:left;
+  text-transform:none;letter-spacing:0;font-size:13px;line-height:1.3;padding:5px 8px}
+.toc button:hover{text-decoration:none;background:var(--desk)}
+.toc button span{min-width:0;overflow-wrap:anywhere}
+.toc button em{font-style:normal;font-size:11px;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+.toc button.on{background:var(--ink);color:var(--paper-20)}
+.toc button.on em{color:inherit}
+.range{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 10px}
+.range label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.range input[type=number]{width:72px}
+.ghost{border:1px solid var(--ink);padding:7px 12px;font-size:11px;font-weight:600}
+
+/* ---------- text entry ---------- */
+.entry{display:flex;flex-direction:column;gap:12px}
+.entry h2{margin:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;
+  border-bottom:1px solid var(--rule);padding-bottom:6px}
+.fields{display:flex;flex-wrap:wrap;gap:12px}
+.fields label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.fields label.grow{flex:1 1 220px;min-width:0}
+input,textarea{font:400 15px/1.5 var(--f-word);color:var(--ink);background:var(--paper-20);
+  border:1px solid var(--rule);border-radius:0;padding:7px 9px;width:100%}
+input[type=number]{width:110px;font-family:var(--f-label)}
+textarea{min-height:170px;resize:vertical}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.load{border:1px solid var(--ink);padding:7px 14px;font-size:11px;font-weight:600;background:var(--ink);color:var(--desk)}
+.note{color:var(--ink-soft);font-size:12.5px}
+dl.key{margin:0;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 16px;font-size:12.5px;line-height:1.45;color:var(--ink-soft)}
+dl.key dt{font-weight:600;letter-spacing:.1em;color:var(--ink)}
+dl.key dd{margin:0}
+</style>
+
+<div class="wrap">
+  <section class="device" id="device" data-lut="40">
+    <div class="r1"><div class="views" role="tablist">
+        <button type="button" role="tab" id="vSpeed" aria-selected="true">Speed Read</button>
+        <button type="button" role="tab" id="vFocal" aria-selected="false">Focal Read</button>
+      </div><span class="title" id="title"></span></div>
+
+    <div class="r2">
+      <button type="button" data-set="mode" title="Words shown per flash"></button><span class="sep">/</span>
+      <button type="button" data-set="align" title="Where the word sits against the rule: left, centre or right"></button><span class="sep">/</span>
+      <button type="button" data-set="lut" title="Panel temperature: cool, neutral or warm paper tone"></button><span class="sep">/</span>
+      <button type="button" data-set="cut" title="Break groups at punctuation and hold there a little longer"></button><span class="sep">/</span>
+      <button type="button" data-set="spi" title="Refresh speed: slower settings leave a short blank between words"></button>
+      <span class="fo" id="fo" hidden>
+        <span class="sep">/</span><button type="button" data-set="lines" title="How many lines of text are visible"></button>
+        <span class="sep">/</span><button type="button" data-set="zoom" title="Text size"></button>
+        <span class="sep">/</span><button type="button" data-set="track" title="Place: the highlight moves down the text. Center: the highlighted line stays in the middle"></button>
+      </span>
+      <span class="count" id="count"></span>
+    </div>
+
+    <div class="stage" id="stage" data-align="L" role="button" tabindex="0" aria-label="Pause or resume reading">
+      <div class="ruler top"><i></i></div>
+      <div class="word" id="word" aria-live="off"></div>
+      <div class="focal" id="focal"></div>
+      <div class="ruler bot"><i></i></div>
+    </div>
+
+    <div class="r4">
+      <div class="stat">
+        <div class="lab">Rate</div>
+        <div class="val"><span id="rate">425</span><small>WPM</small></div>
+        <div class="adj"><button type="button" id="slower" aria-label="Slower by 25 words per minute">&minus; 25</button><button type="button" id="faster" aria-label="Faster by 25 words per minute">+ 25</button></div>
+      </div>
+      <div class="stat">
+        <div class="lab">Page</div>
+        <div class="val"><span id="page">1</span><small id="pages">/ 1</small></div>
+      </div>
+      <div class="stat">
+        <div class="lab">Remaining</div>
+        <div class="val"><span id="remain">0:00</span><small id="remainUnit">M</small></div>
+      </div>
+    </div>
+
+    <div class="r5">
+      <div class="head"><span>Progress</span><span id="pct">0%</span></div>
+      <div class="bar" id="bar" title="Click to jump"><div class="fill" id="fill"></div></div>
+    </div>
+
+    <div class="r6">
+      <button type="button" class="live" id="live"></button>
+      <div class="nav">
+        <button type="button" id="fwd">Fwd +25</button><span class="sep">/</span>
+        <button type="button" id="back">Back -25</button><span class="sep">/</span>
+        <button type="button" id="center">Center pause</button><span class="sep">/</span>
+        <button type="button" id="full">Full page</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="entry" id="entry">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tabText" aria-selected="true">Text</button>
+      <button type="button" role="tab" id="tabPdf" aria-selected="false">PDF</button>
+      <button type="button" role="tab" id="tabEpub" aria-selected="false">EPUB</button>
+    </div>
+    <div class="fields">
+      <label class="grow" for="inTitle">Title<input id="inTitle" type="text" autocomplete="off"></label>
+      <label for="inWpp">Words per page<input id="inWpp" type="number" min="50" max="2000" step="10"></label>
+    </div>
+    <div class="src">
+      <aside class="side" id="side" hidden>
+        <div class="pick">
+          <input id="inPdf" type="file" accept="application/pdf,.pdf" class="vh">
+          <label class="filebtn" id="fileBtn" for="inPdf">Choose PDF</label>
+          <span class="note" id="pdfName">No file chosen</span>
+        </div>
+        <p class="note" id="pdfNote">Only the section or pages you pick are converted to text. The file stays in your browser.</p>
+        <div id="pdfBody" hidden>
+          <h3 id="tocHead">Sections</h3>
+          <ol class="toc" id="toc"></ol>
+          <p class="note" id="noToc" hidden>This PDF has no outline. Pick a page range instead.</p>
+          <h3 id="rangeHead">Pages</h3>
+          <div class="range">
+            <label for="pgFrom">From<input id="pgFrom" type="number" min="1" value="1"></label>
+            <label for="pgTo">To<input id="pgTo" type="number" min="1" value="1"></label>
+            <button type="button" class="ghost" id="pgGo">Extract pages</button>
+          </div>
+          <p class="note" id="pgOf"></p>
+        </div>
+      </aside>
+      <textarea id="inText" aria-label="Text to read" placeholder="Paste the text you want to read"></textarea>
+    </div>
+    <div class="actions">
+      <button type="button" class="load" id="load">Load text</button>
+      <span class="note" id="note"></span>
+    </div>
+  </section>
+
+  <section class="entry">
+    <h2>Settings and keys</h2>
+    <dl class="key">
+      <dt>MODE</dt><dd>Words shown per flash, 1 to 4.</dd>
+      <dt>ALIGN</dt><dd>Anchors the word to the left, centre or right marker on the rule.</dd>
+      <dt>LUT</dt><dd>Panel temperature. 0C is cool paper, 40C is warm.</dd>
+      <dt>CUT</dt><dd>Ends a group at punctuation and holds for the set time. Commas get half.</dd>
+      <dt>SPI</dt><dd>Refresh speed. 40MHZ swaps words instantly; 20 and 10 leave a short blank between them.</dd>
+      <dt>LINES</dt><dd>Focal Read only. How many lines of the text are visible: 3, 5, 9 or 15. In full page the text fills the whole height.</dd>
+      <dt>ZOOM</dt><dd>Focal Read only. Text size, 75% to 200%.</dd>
+      <dt>TRACK</dt><dd>Focal Read only. Place moves the highlight down the text; Center keeps the highlighted line in the middle. While paused, click any word to jump to it.</dd>
+      <dt>PDF</dt><dd>Pick a section from the PDF's outline, or a page range of up to 200 pages. Page then shows the real PDF page.</dd>
+      <dt>EPUB</dt><dd>Pick a section from the book's table of contents, or a range of up to 50 parts. A part is one file inside the book, usually a chapter.</dd>
+      <dt>KEYS</dt><dd>Space pauses and resumes. Left and right jump 25 words. Up and down change the rate by 25. F toggles full page, Esc leaves it.</dd>
+    </dl>
+  </section>
+</div>
+
+<script>
+const SAMPLE = `The road out of Calloway ran straight for eleven miles before it remembered it was supposed to go somewhere. My grandfather called it the road to heaven, partly because of the way it climbed toward the ridge at the end, and partly because nobody he knew had ever come back down it with a complaint. We drove it in August, with the windows open and the radio giving up one station at a time. The fields on either side had been cut weeks before, and what was left stood pale and short, like the stubble on a tired man's jaw. He kept one hand on the wheel and the other out in the wind, turning it over as if he were weighing the afternoon. When I asked him how far it was, he said distance was a thing people worried about when they had not yet decided to arrive. Then he laughed at himself, coughed, and pointed ahead to where the road lifted and went white in the sun. Behind us the truck pulled a long brown curtain across everything we had passed, and for a while the whole county was nothing but light and dust.`;
+
+const $ = id => document.getElementById(id);
+const OPT = { mode:[1,2,3,4], align:['L','C','R'], lut:[0,20,40], cut:[0,60,120,240], spi:[40,20,10], lines:[5,9,15,3], zoom:[100,125,150,200,75], track:['PLACE','CENTER'] };
+const NAME = { mode:'Mode', align:'Align', lut:'LUT', cut:'Cut', spi:'SPI', lines:'Lines', zoom:'Zoom', track:'Track' };
+const LABEL = {
+  mode:v=>v+'W', align:v=>v, lut:v=>v+'C',
+  cut:v=>v?'Auto '+v+'ms':'Off', spi:v=>v+'MHz',
+  lines:v=>v+'L', zoom:v=>v+'%', track:v=>v
+};
+const BLANK = { 40:0, 20:.15, 10:.3 };
+const STEP = 25, KEY = 'speedread.v1';
+
+const S = { title:'Road to Heaven', text:SAMPLE, wpp:300, wpm:425, mode:2, align:'L', lut:40, cut:60, spi:40, lines:5, zoom:100, track:'PLACE', view:'speed', pos:0, sample:true };
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+  if (saved && typeof saved.text === 'string') {
+    Object.assign(S, saved);
+    for (const k in OPT) if (!OPT[k].includes(S[k])) S[k] = OPT[k][0];
+  }
+} catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+let words = [], paras = new Set(), chunks = [], ci = 0, playing = false, done = false;
+let timer = 0, blankTimer = 0, expected = 0, wake = null;
+const wordEl = $('word'), stage = $('stage'), fv = $('focal');
+let fwin = null, fsp = [], fhl = [], flh = 0;
+
+function buildChunks() {
+  chunks = [];
+  let i = 0;
+  while (i < words.length) {
+    const start = i; let n = 0, pause = 0;
+    while (n < S.mode && i < words.length) {
+      const w = words[i]; i++; n++;
+      if (S.cut) {
+        if (/[.!?…]["')\]”’]*$/.test(w)) { pause = S.cut; break; }
+        if (/[,;:—–]["')\]”’]*$/.test(w)) { pause = S.cut / 2; break; }
+      }
+    }
+    chunks.push({ start, n, pause });
+  }
+}
+function chunkAt(pos) {
+  let lo = 0, hi = chunks.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (chunks[m].start <= pos) lo = m; else hi = m - 1; }
+  return Math.max(0, lo);
+}
+function setText(text, pos) {
+  words = []; paras = new Set(); fwin = null;
+  for (const para of text.split(/\n\s*\n/)) {
+    const w = para.trim().split(/\s+/).filter(Boolean);
+    if (!w.length) continue;
+    if (words.length) paras.add(words.length);
+    for (const x of w) words.push(x);
+  }
+  buildChunks();
+  ci = chunkAt(Math.min(pos || 0, Math.max(0, words.length - 1)));
+  done = false;
+}
+
+function fit() {
+  wordEl.style.fontSize = '';
+  const avail = stage.clientWidth * (S.align === 'C' ? 1 : .9);
+  const w = wordEl.getBoundingClientRect().width;
+  if (w > avail) wordEl.style.fontSize = (parseFloat(getComputedStyle(wordEl).fontSize) * avail / w) + 'px';
+}
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function layoutFocal() {
+  if (S.view !== 'focal') { stage.style.removeProperty('--anchor'); stage.style.minHeight = ''; return; }
+  const fs = Math.max(15, Math.min(21, stage.clientWidth / 24)) * S.zoom / 100;
+  flh = Math.round(fs * 1.6);
+  fv.style.fontSize = fs + 'px'; fv.style.lineHeight = flh + 'px';
+  // Lines sets the stage's own height; the text then fills whatever height the stage ends up with
+  const cs = getComputedStyle(stage), pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  stage.style.minHeight = (S.lines * flh + pad) + 'px';
+  fv.style.height = '0px'; fv.style.paddingTop = fv.style.paddingBottom = '0px';
+  const n = Math.max(1, Math.floor((stage.clientHeight - pad) / flh));
+  fv.style.height = (n * flh) + 'px';
+  fv.style.paddingTop = fv.style.paddingBottom = (S.track === 'CENTER' ? Math.floor((n - 1) * flh / 2) : 0) + 'px';
+}
+function renderFocal(at) {
+  const total = words.length, all = total <= 6000;
+  const a = all ? 0 : Math.max(0, at - 1000), b = all ? total : Math.min(total, a + 4000);
+  let h = '';
+  for (let i = a; i < b; i++) {
+    if (i > a) h += paras.has(i) ? '<i class="pb"></i>' : ' ';
+    h += '<span data-i="' + i + '">' + esc(words[i]) + '</span>';
+  }
+  fv.innerHTML = h;
+  fsp = fv.getElementsByTagName('span'); fhl = []; fwin = { a, b };
+}
+function paintFocal(c) {
+  fv.classList.remove('blank');
+  if (!c) { fv.textContent = 'Paste text below'; fwin = null; fhl = []; return; }
+  const end = c.start + c.n;
+  if (!fwin || c.start < fwin.a || end > fwin.b || (fwin.b < words.length && end > fwin.b - 150)) renderFocal(c.start);
+  for (const e of fhl) e.className = '';
+  fhl = [];
+  for (let i = c.start; i < end; i++) {
+    const e = fsp[i - fwin.a];
+    e.className = i < end - 1 && !paras.has(i + 1) ? 'hl j' : 'hl';
+    fhl.push(e);
+  }
+  const el = fhl[0], top = el.offsetTop - (flh - el.offsetHeight) / 2, vh = fv.clientHeight;
+  if (S.track === 'CENTER') fv.scrollTop = top - (vh - flh) / 2;
+  else if (top < fv.scrollTop - 1 || top + flh > fv.scrollTop + vh + 1) fv.scrollTop = top;
+  stage.style.setProperty('--anchor', (fv.offsetLeft + el.offsetLeft) + 'px');
+}
+function setBlank() {
+  if (S.view === 'focal') fv.classList.add('blank'); else wordEl.style.visibility = 'hidden';
+}
+function refit() { if (S.view === 'focal') { layoutFocal(); paint(); } else fit(); }
+function setView(v) {
+  S.view = v; fwin = null;
+  paintChrome(); layoutFocal(); paint(); save();
+}
+function paint() {
+  const c = chunks[ci];
+  wordEl.style.visibility = 'visible';
+  if (S.view === 'focal') paintFocal(c);
+  else { wordEl.textContent = c ? words.slice(c.start, c.start + c.n).join(' ') : 'Paste text below'; fit(); }
+  const total = words.length, at = done ? total : (c ? c.start : 0), left = total - at;
+  $('rate').textContent = S.wpm;
+  const wpp = Math.max(1, S.wpp);
+  if (S.pmap && S.pmap.length) {
+    let p = S.pmap[0].p;
+    for (const e of S.pmap) { if (e.w <= at) p = e.p; else break; }
+    $('page').textContent = p;
+    $('pages').textContent = '/ ' + S.ptotal;
+  } else {
+    $('page').textContent = total ? Math.min(Math.floor(at / wpp) + 1, Math.ceil(total / wpp)) : 0;
+    $('pages').textContent = '/ ' + Math.ceil(total / wpp);
+  }
+  const sec = Math.round(left / S.wpm * 60);
+  const pad = n => String(n).padStart(2, '0');
+  if (sec >= 3600) { $('remain').textContent = Math.floor(sec / 3600) + ':' + pad(Math.floor(sec % 3600 / 60)); $('remainUnit').textContent = 'H'; }
+  else { $('remain').textContent = Math.floor(sec / 60) + ':' + pad(sec % 60); $('remainUnit').textContent = 'M'; }
+  const pct = total ? at / total * 100 : 0;
+  $('pct').textContent = Math.round(pct) + '%';
+  $('fill').style.width = pct + '%';
+}
+function paintChrome() {
+  $('title').textContent = S.title || 'Untitled';
+  $('count').textContent = '// ' + words.length.toLocaleString() + ' words';
+  $('device').dataset.lut = S.lut;
+  stage.dataset.align = S.align;
+  const focal = S.view === 'focal';
+  stage.classList.toggle('fmode', focal);
+  $('fo').hidden = !focal;
+  $('vSpeed').setAttribute('aria-selected', !focal);
+  $('vFocal').setAttribute('aria-selected', focal);
+  document.querySelectorAll('[data-set]').forEach(b => {
+    const k = b.dataset.set;
+    b.innerHTML = NAME[k] + ' <b>' + LABEL[k](S[k]) + '</b>';
+  });
+  const live = $('live');
+  live.classList.toggle('on', playing);
+  live.textContent = playing ? '● Reading' : done ? '■ Finished' : (chunks[ci] && chunks[ci].start > 0) ? '○ Paused' : '▶ Start';
+  live.setAttribute('aria-pressed', playing);
+  $('center').textContent = playing ? 'Center pause' : 'Center resume';
+}
+
+function clearTimers() { clearTimeout(timer); clearTimeout(blankTimer); }
+function step() {
+  paint();
+  const c = chunks[ci];
+  const dur = c.n * 60000 / S.wpm + c.pause;
+  expected += dur;
+  const wait = Math.max(0, expected - performance.now());
+  const frac = BLANK[S.spi];
+  if (frac) blankTimer = setTimeout(setBlank, wait * (1 - frac));
+  timer = setTimeout(() => {
+    if (ci >= chunks.length - 1) return finish();
+    ci++; step();
+  }, wait);
+}
+function restart() { if (!playing) return; clearTimers(); expected = performance.now(); step(); }
+async function play() {
+  if (!words.length) return;
+  if (done) { ci = 0; done = false; }
+  playing = true; expected = performance.now();
+  paintChrome(); step();
+  try { wake = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+function stop() {
+  clearTimers(); playing = false;
+  if (wake) { try { wake.release(); } catch (e) {} wake = null; }
+  S.pos = chunks[ci] ? chunks[ci].start : 0;
+  save(); paint(); paintChrome();
+}
+function finish() { done = true; stop(); S.pos = 0; save(); }
+const toggle = () => playing ? stop() : play();
+
+function seek(pos) {
+  if (!words.length) return;
+  done = false;
+  ci = chunkAt(Math.max(0, Math.min(words.length - 1, pos)));
+  S.pos = chunks[ci].start;
+  if (playing) restart(); else { paint(); paintChrome(); save(); }
+}
+const skip = d => seek((chunks[ci] ? chunks[ci].start : 0) + d);
+function setRate(d) {
+  S.wpm = Math.max(50, Math.min(1500, S.wpm + d));
+  paint(); save();
+}
+
+document.querySelectorAll('[data-set]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.set, o = OPT[k];
+  S[k] = o[(o.indexOf(S[k]) + 1) % o.length];
+  if (k === 'mode' || k === 'cut') {
+    const pos = chunks[ci] ? chunks[ci].start : 0;
+    buildChunks(); ci = chunkAt(pos);
+  }
+  paintChrome(); layoutFocal(); save();
+  if (playing) restart(); else paint();
+}));
+$('live').addEventListener('click', toggle);
+$('center').addEventListener('click', toggle);
+stage.addEventListener('click', e => {
+  const t = e.target;
+  if (S.view === 'focal') {
+    if (t === fv && e.offsetX > fv.clientWidth) return;             // scrollbar
+    if (!playing && t.dataset && t.dataset.i !== undefined) { seek(+t.dataset.i); return; }
+  }
+  toggle();
+});
+$('vSpeed').addEventListener('click', () => setView('speed'));
+$('vFocal').addEventListener('click', () => setView('focal'));
+stage.addEventListener('keydown', e => { if (e.key === 'Enter') toggle(); });
+$('fwd').addEventListener('click', () => skip(STEP));
+$('back').addEventListener('click', () => skip(-STEP));
+$('faster').addEventListener('click', () => setRate(STEP));
+$('slower').addEventListener('click', () => setRate(-STEP));
+$('bar').addEventListener('click', e => {
+  const r = $('bar').getBoundingClientRect();
+  seek(Math.floor((e.clientX - r.left) / r.width * words.length));
+});
+
+function loadReader(text, title, pmap, ptotal) {
+  if (playing) stop();
+  S.text = text; S.title = title; S.pos = 0; S.sample = false;
+  S.pmap = pmap || null; S.ptotal = ptotal || 0;
+  setText(S.text, 0);
+  paint(); paintChrome(); save();
+}
+$('load').addEventListener('click', () => {
+  const text = $('inText').value;
+  if (!text.trim()) { $('note').textContent = 'Paste some text first.'; return; }
+  loadReader(text, $('inTitle').value.trim());
+  $('note').textContent = 'Loaded ' + words.length.toLocaleString() + ' words.';
+  $('device').scrollIntoView({ block: 'start', behavior: 'smooth' });
+});
+
+/* ---------- full page ---------- */
+function setFull(on) {
+  $('device').classList.toggle('full', on);
+  document.body.classList.toggle('locked', on);
+  $('full').textContent = on ? 'Exit full page' : 'Full page';
+  refit();
+}
+const isFull = () => $('device').classList.contains('full');
+$('full').addEventListener('click', () => setFull(!isFull()));
+
+/* ---------- tabs ---------- */
+const KIND = {
+  pdf:  { name:'PDF',  accept:'application/pdf,.pdf',        one:'page', many:'pages', abbr:'p.',  abbrs:'pp.',  head:'Pages', max:200, to:10 },
+  epub: { name:'EPUB', accept:'application/epub+zip,.epub', one:'part', many:'parts', abbr:'pt.', abbrs:'pts.', head:'Parts', max:50,  to:1 }
+};
+const docs = { pdf:null, epub:null };
+let job = 0;
+function note(m) { $('pdfNote').textContent = m; const d = docs[S.tab]; if (d) d.note = m; }
+function mark() {
+  const d = docs[S.tab];
+  $('toc').querySelectorAll('button').forEach(b => b.classList.toggle('on', !!d && +b.dataset.i === d.on));
+}
+function renderSide() {
+  const k = S.tab, u = KIND[k], d = docs[k];
+  $('side').hidden = !u;
+  if (!u) return;
+  $('inPdf').accept = u.accept; $('inPdf').value = '';
+  $('fileBtn').textContent = 'Choose ' + u.name;
+  $('pdfName').textContent = d ? d.name : 'No file chosen';
+  $('pdfBody').hidden = !d;
+  $('pdfNote').textContent = d ? d.note : 'Only the section or ' + u.many + ' you pick are converted to text. The file stays in your browser.';
+  if (!d) return;
+  const toc = $('toc');
+  toc.textContent = '';
+  d.sections.forEach((s, i) => {
+    const li = document.createElement('li'), b = document.createElement('button');
+    b.type = 'button'; b.dataset.i = i; b.style.paddingLeft = (8 + Math.min(s.depth, 5) * 14) + 'px';
+    const t = document.createElement('span'), p = document.createElement('em');
+    t.textContent = s.title; p.textContent = u.abbr + ' ' + s.at;
+    b.append(t, p); li.append(b); toc.append(li);
+  });
+  const has = d.sections.length > 0;
+  $('tocHead').hidden = !has; toc.hidden = !has; $('noToc').hidden = has;
+  $('noToc').textContent = 'This ' + u.name + ' has no table of contents. Pick a range of ' + u.many + ' instead.';
+  $('rangeHead').textContent = u.head;
+  $('pgFrom').max = $('pgTo').max = d.count;
+  $('pgFrom').value = d.a; $('pgTo').value = d.b;
+  $('pgOf').textContent = d.count.toLocaleString() + ' ' + (d.count === 1 ? u.one : u.many) + ' in this file. Up to ' + u.max + ' at a time.';
+  mark();
+}
+function setTab(t) {
+  S.tab = t; job++;
+  const isDoc = !!KIND[t];
+  $('entry').classList.toggle('pdf', isDoc);
+  for (const [id, v] of [['tabText', 'text'], ['tabPdf', 'pdf'], ['tabEpub', 'epub']]) $(id).setAttribute('aria-selected', t === v);
+  $('inText').placeholder = isDoc ? 'Text from the section or ' + KIND[t].many + ' you pick appears here' : 'Paste the text you want to read';
+  renderSide();
+}
+$('tabText').addEventListener('click', () => { setTab('text'); save(); });
+$('tabPdf').addEventListener('click', () => { setTab('pdf'); save(); });
+$('tabEpub').addEventListener('click', () => { setTab('epub'); save(); });
+
+/* ---------- shared file handling ---------- */
+const scripts = {};
+function loadScript(url) {
+  return scripts[url] || (scripts[url] = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = url; s.onload = res;
+    s.onerror = () => { delete scripts[url]; rej(new Error('A reader library could not be loaded. Check your connection and try again.')); };
+    document.head.appendChild(s);
+  }));
+}
+function tooMany(k, n) {
+  const u = KIND[k];
+  if (n <= u.max) return false;
+  note('That is ' + n + ' ' + u.many + '. Pick ' + u.max + ' or fewer at a time, or a smaller section.');
+  return true;
+}
+function deliver(k, text, title, first, last, pmap, ptotal) {
+  const u = KIND[k];
+  $('inText').value = text; $('inTitle').value = title;
+  loadReader(text, title, pmap, ptotal);
+  note('Loaded ' + (first === last ? u.one + ' ' + first : u.many + ' ' + first + '–' + last) + ', ' + words.length.toLocaleString() + ' words.');
+  $('note').textContent = '';
+  return true;
+}
+async function openDoc(file) {
+  const k = S.tab, u = KIND[k], my = ++job;
+  if (docs.pdf && k === 'pdf') { try { docs.pdf.pdf.destroy(); } catch (e) {} }
+  docs[k] = null; renderSide();
+  $('pdfName').textContent = file.name;
+  note('Opening…');
+  try {
+    const d = await (k === 'pdf' ? openPdf(file) : openEpub(file));
+    if (my !== job) return;
+    d.name = file.name; d.base = d.title || file.name.replace(/\.(pdf|epub)$/i, '');
+    d.a = 1; d.b = Math.min(d.count, u.to); d.on = -1;
+    d.note = d.sections.length ? 'Pick a section to read, or set a range of ' + u.many + '.' : 'Set a range of ' + u.many + ' to read.';
+    docs[k] = d; renderSide();
+  } catch (e) {
+    if (my !== job) return;
+    note(e && e.name === 'PasswordException' ? 'This PDF is password-protected and cannot be opened here.'
+      : 'That file could not be opened as ' + (k === 'pdf' ? 'a PDF' : 'an EPUB') + '. ' + (e && e.message ? e.message : ''));
+  }
+}
+$('inPdf').addEventListener('change', e => { const f = e.target.files[0]; if (f) openDoc(f); });
+$('toc').addEventListener('click', async e => {
+  const b = e.target.closest('button'), k = S.tab, d = docs[k];
+  if (!b || !d) return;
+  const i = +b.dataset.i;
+  d.on = -1; mark();
+  if (await (k === 'pdf' ? pdfSection(d, i) : epubSection(d, i)) && docs[k] === d) { d.on = i; if (S.tab === k) mark(); }
+});
+$('pgGo').addEventListener('click', () => {
+  const k = S.tab, u = KIND[k], d = docs[k];
+  if (!d) return;
+  const clamp = v => Math.max(1, Math.min(d.count, parseInt(v, 10) || 1));
+  let a = clamp($('pgFrom').value), b = clamp($('pgTo').value);
+  if (b < a) [a, b] = [b, a];
+  $('pgFrom').value = d.a = a; $('pgTo').value = d.b = b;
+  d.on = -1; mark();
+  const title = d.base + (a === b ? ', ' + u.abbr + ' ' + a : ', ' + u.abbrs + ' ' + a + '–' + b);
+  if (k === 'pdf') pdfExtract(d, a, b, null, null, title); else epubExtract(d, a - 1, b - 1, null, null, title);
+});
+
+/* ---------- PDF ---------- */
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+async function resolveDest(pdf, d) {
+  try {
+    if (typeof d === 'string') d = await pdf.getDestination(d);
+    if (!Array.isArray(d)) return null;
+    const idx = Number.isInteger(d[0]) ? d[0] : await pdf.getPageIndex(d[0]);
+    const kind = d[1] && d[1].name;
+    const top = kind === 'XYZ' ? d[3] : (kind === 'FitH' || kind === 'FitBH') ? d[2] : null;
+    return { page: idx + 1, top: Number.isFinite(top) && top > 0 ? top : null };
+  } catch (e) { return null; }
+}
+async function openPdf(file) {
+  await loadScript(PDFJS + 'pdf.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+  const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const flat = [];
+  const walk = (items, depth) => { for (const it of items || []) { flat.push({ title: (it.title || '').trim() || 'Untitled', depth, dest: it.dest }); walk(it.items, depth + 1); } };
+  walk(await pdf.getOutline(), 0);
+  const where = await Promise.all(flat.map(f => resolveDest(pdf, f.dest)));
+  const sections = flat.map((f, i) => where[i] && { title: f.title, depth: f.depth, page: where[i].page, top: where[i].top, at: where[i].page }).filter(Boolean);
+  return { pdf, count: pdf.numPages, sections };
+}
+function pdfSection(d, i) {
+  const s = d.sections[i];
+  let last = d.count, topEnd = null;
+  const next = d.sections.slice(i + 1).find(x => x.depth <= s.depth);
+  if (next) {
+    if (next.top != null && next.page >= s.page) { last = next.page; topEnd = next.top; }
+    else last = Math.max(s.page, next.page - 1);
+  }
+  return pdfExtract(d, s.page, last, s.top, topEnd, s.title);
+}
+async function pdfExtract(d, first, last, topStart, topEnd, title) {
+  const my = ++job, n = last - first + 1;
+  if (tooMany('pdf', n)) return false;
+  const parts = [], pmap = []; let w = 0;
+  try {
+    for (let p = first; p <= last; p++) {
+      note('Reading page ' + p + ' (' + (p - first + 1) + ' of ' + n + ')…');
+      const page = await d.pdf.getPage(p);
+      const tc = await page.getTextContent();
+      if (my !== job) return false;
+      const flat = !page.rotate;
+      const hi = p === first && topStart != null && flat ? topStart + 1 : Infinity;
+      const lo = p === last && topEnd != null && flat ? topEnd + 1 : -Infinity;
+      let out = '';
+      for (const it of tc.items) {
+        if (it.str === undefined) continue;
+        const y = it.transform[5];
+        if (y > hi || y <= lo) continue;
+        out += it.str;
+        if (it.hasEOL) out += '\n';
+      }
+      page.cleanup();
+      out = out.replace(/(\p{L})-\n(\p{Ll})/gu, '$1$2').replace(/\s*\n\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').trim();
+      if (!out) continue;
+      pmap.push({ p, w });
+      w += out.split(/\s+/).length;
+      parts.push(out);
+    }
+  } catch (e) { note('Those pages could not be read. ' + (e && e.message ? e.message : '')); return false; }
+  if (!w) { note('No selectable text on ' + (n > 1 ? 'those pages' : 'that page') + '. Scanned PDFs need OCR first.'); return false; }
+  return deliver('pdf', parts.join('\n\n'), title, first, last, pmap, d.count);
+}
+
+/* ---------- EPUB ---------- */
+const JSZIP = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+const EPUBJS = 'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js';
+const BLOCK = /^(p|div|h[1-6]|li|blockquote|section|article|aside|header|footer|figure|figcaption|tr|td|th|dt|dd|pre|hr|table|ul|ol|dl|nav)$/i;
+const SKIP = /^(script|style|svg|math|head|template)$/i;
+function domText(root, startEl, endEl) {
+  const w = root.ownerDocument.createTreeWalker(root, 5, { acceptNode: n => n.nodeType === 1 && SKIP.test(n.localName) ? 2 : 1 });
+  let on = !startEl, out = '';
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (n === endEl) break;
+    if (n === startEl) on = true;
+    if (!on) continue;
+    if (n.nodeType === 1) { if (BLOCK.test(n.localName)) out += '\n'; else if (n.localName === 'br') out += ' '; }
+    else out += n.data.replace(/\s+/g, ' ');
+  }
+  return out.replace(/ *\n[ \n]*/g, '\n\n').replace(/ {2,}/g, ' ').trim();
+}
+function byId(doc, id) {
+  if (!id) return null;
+  let el = null;
+  try { el = doc.getElementById(id) || doc.querySelector('[id="' + CSS.escape(id) + '"],[name="' + CSS.escape(id) + '"]'); } catch (e) {}
+  return el;
+}
+async function openEpub(file) {
+  await loadScript(JSZIP);
+  await loadScript(EPUBJS);
+  const book = window.ePub(await file.arrayBuffer());
+  book.replacements = () => new Promise(() => {});   // text only: skip converting every image and stylesheet
+  await book.ready;
+  const items = book.spine.spineItems;
+  const dec = s => { try { return decodeURIComponent(s); } catch (e) { return s; } };
+  const locate = href => {
+    const cut = (href || '').split('#'), path = cut[0], frag = cut[1] ? dec(cut[1]) : null;
+    if (!path) return null;
+    let sec = book.spine.get(path);
+    if (!sec) {
+      const tail = dec(path).replace(/^(\.\.?\/)+/, '');
+      sec = items.find(s => s.href && (dec(s.href).endsWith(tail) || tail.endsWith(dec(s.href))));
+    }
+    return sec ? { idx: sec.index, frag } : null;
+  };
+  const sections = [];
+  const walk = (list, depth) => {
+    for (const it of list || []) {
+      const at = locate(it.href);
+      if (at) sections.push({ title: (it.label || '').replace(/\s+/g, ' ').trim() || 'Untitled', depth, idx: at.idx, frag: at.frag, at: at.idx + 1 });
+      walk(it.subitems, depth + 1);
+    }
+  };
+  walk(book.navigation && book.navigation.toc, 0);
+  const meta = book.packaging && book.packaging.metadata;
+  return { book, items, count: items.length, sections, title: meta && meta.title ? meta.title.trim() : '' };
+}
+function epubSection(d, i) {
+  const s = d.sections[i];
+  let last = d.count - 1, fragEnd = null;
+  const next = d.sections.slice(i + 1).find(x => x.depth <= s.depth);
+  if (next) {
+    if (next.frag && next.idx >= s.idx) { last = next.idx; fragEnd = next.frag; }
+    else last = Math.max(s.idx, next.idx - 1);
+  }
+  return epubExtract(d, s.idx, last, s.frag, fragEnd, s.title);
+}
+async function epubExtract(d, first, last, fragStart, fragEnd, title) {
+  const my = ++job, n = last - first + 1;
+  if (tooMany('epub', n)) return false;
+  const parts = [];
+  try {
+    for (let i = first; i <= last; i++) {
+      note('Reading part ' + (i + 1) + ' (' + (i - first + 1) + ' of ' + n + ')…');
+      const sec = d.items[i];
+      const root = await sec.load(d.book.load.bind(d.book));
+      if (my !== job) return false;
+      const doc = sec.document || root.ownerDocument;
+      const body = doc.body || doc.querySelector('body') || root;
+      const startEl = i === first ? byId(doc, fragStart) : null;
+      const endEl = i === last ? byId(doc, fragEnd) : null;
+      const skip = i === last && fragEnd && !endEl && i > first;   // next section's file, boundary not found
+      const text = skip ? '' : domText(body, startEl, endEl);
+      sec.unload();
+      if (text) parts.push(text);
+    }
+  } catch (e) { note('Those parts could not be read. ' + (e && e.message ? e.message : '')); return false; }
+  if (!parts.length) { note('No text in ' + (n > 1 ? 'those parts' : 'that part') + '. It may be images only.'); return false; }
+  return deliver('epub', parts.join('\n\n'), title, first + 1, last + 1);
+}
+
+document.addEventListener('keydown', e => {
+  if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k === ' ') { if (e.target.tagName === 'BUTTON') return; e.preventDefault(); toggle(); }
+  else if (k === 'f' || k === 'F') setFull(!isFull());
+  else if (k === 'Escape' && isFull()) setFull(false);
+  else if (k === 'ArrowRight') { e.preventDefault(); skip(STEP); }
+  else if (k === 'ArrowLeft') { e.preventDefault(); skip(-STEP); }
+  else if (k === 'ArrowUp') { e.preventDefault(); setRate(STEP); }
+  else if (k === 'ArrowDown') { e.preventDefault(); setRate(-STEP); }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && playing) stop(); });
+window.addEventListener('resize', refit);
+
+$('inTitle').value = S.title;
+$('inWpp').value = S.wpp;
+$('inText').value = S.text;
+$('note').textContent = S.sample ? 'A sample passage is loaded. Paste your own text and press Load.' : '';
+setText(S.text, S.pos);
+if (S.view !== 'focal') S.view = 'speed';
+setTab(KIND[S.tab] ? S.tab : 'text');
+layoutFocal();
+paint(); paintChrome();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
+</script>
+
+</body></html>
