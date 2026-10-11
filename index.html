@@ -91,6 +91,14 @@ button:hover{text-decoration:underline;text-underline-offset:3px}
 .r6{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px 20px;margin-top:20px}
 .live{border:1px solid var(--ink);padding:4px 9px 4px 8px;font-weight:600;font-size:10.5px}
 .live.on{background:var(--ink);color:var(--paper)}
+.live:disabled{opacity:.45;cursor:not-allowed}
+.toggles{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.voice{font:600 10.5px var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink);cursor:pointer;
+  border:1px solid var(--ink);border-radius:0;padding:4px 24px 4px 8px;max-width:min(220px,100%);text-overflow:ellipsis;
+  appearance:none;-webkit-appearance:none;background-color:transparent;background-repeat:no-repeat;background-size:5px 5px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+  background-position:calc(100% - 13px) 50%,calc(100% - 8px) 50%}
+.voice option,.voice optgroup{text-transform:none;letter-spacing:0;color:var(--ink);background:var(--paper)}
 .live:hover{text-decoration:none}
 .nav{display:flex;flex-wrap:wrap;gap:4px 0;font-size:10.5px}
 .nav .sep{margin-inline:10px;color:var(--ink-soft)}
@@ -98,7 +106,7 @@ button:hover{text-decoration:underline;text-underline-offset:3px}
 /* ---------- focal read ---------- */
 .r2 .fo{display:flex;align-items:center}
 .focal{display:none}
-.stage.fmode{height:auto;min-height:0;display:flex;align-items:center;padding-block:42px;cursor:default}
+.stage.fmode{height:clamp(190px,36vh,330px);min-height:auto;display:flex;align-items:center;padding-block:42px;cursor:default}
 .stage.fmode .word{display:none}
 .stage.fmode .focal{display:block;position:relative;width:100%;overflow-y:auto;padding-right:12px;
   font-family:var(--f-word);font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-soft);
@@ -149,9 +157,7 @@ body.locked{overflow:hidden}
 .range input[type=number]{width:72px}
 .ghost{border:1px solid var(--ink);padding:7px 12px;font-size:11px;font-weight:600}
 
-.foot{border-top:1px solid var(--rule);padding-top:10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);text-align:center;}
-.foot a{color:var(--ink-soft);}
-.foot a:hover{color:var(--ink);}
+.foot{border-top:1px solid var(--rule);padding-top:10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
 
 /* ---------- text entry ---------- */
 .entry{display:flex;flex-direction:column;gap:12px}
@@ -203,7 +209,7 @@ dl.key dd{margin:0}
     <div class="r4">
       <div class="stat">
         <div class="lab">Rate</div>
-        <div class="val"><span id="rate">425</span><small>WPM</small></div>
+        <div class="val"><span id="rate">425</span><small id="rateUnit">WPM</small></div>
         <div class="adj"><button type="button" id="slower" aria-label="Slower by 25 words per minute">&minus; 25</button><button type="button" id="faster" aria-label="Faster by 25 words per minute">+ 25</button></div>
       </div>
       <div class="stat">
@@ -222,7 +228,11 @@ dl.key dd{margin:0}
     </div>
 
     <div class="r6">
-      <button type="button" class="live" id="live"></button>
+      <div class="toggles">
+        <button type="button" class="live" id="live"></button>
+        <button type="button" class="live" id="speech" aria-pressed="false">○ Speech</button>
+        <select class="voice" id="voice" aria-label="Voice" title="Voice used for speech" hidden></select>
+      </div>
       <div class="nav">
         <button type="button" id="fwd">Fwd +25</button><span class="sep">/</span>
         <button type="button" id="back">Back -25</button><span class="sep">/</span>
@@ -278,32 +288,39 @@ dl.key dd{margin:0}
       <dt>ALIGN</dt><dd>Anchors the word to the left, centre or right marker on the rule.</dd>
       <dt>LUT</dt><dd>Panel temperature. 0C is cool paper, 40C is warm.</dd>
       <dt>CUT</dt><dd>Ends a group at punctuation and holds for the set time. Commas get half.</dd>
-      <dt>SPI</dt><dd>Refresh speed. 40MHZ swaps words instantly; 20 and 10 leave a short blank between them.</dd>
+      <dt>SPI</dt><dd>Refresh speed. 40MHZ swaps words instantly; 20, 10 and 0 leave a progressively longer blank between them, up to half of each flash at 0.</dd>
       <dt>LINES</dt><dd>Focal Read only. How many lines of the text are visible: 3, 5, 9 or 15. In full page the text fills the whole height.</dd>
       <dt>ZOOM</dt><dd>Focal Read only. Text size, 75% to 200%.</dd>
       <dt>TRACK</dt><dd>Focal Read only. Place moves the highlight down the text; Center keeps the highlighted line in the middle. While paused, click any word to jump to it.</dd>
       <dt>PDF</dt><dd>Pick a section from the PDF's outline, or a page range of up to 200 pages. Page then shows the real PDF page.</dd>
       <dt>EPUB</dt><dd>Pick a section from the book's table of contents, or a range of up to 50 parts. A part is one file inside the book, usually a chapter.</dd>
-      <dt>KEYS</dt><dd>Space pauses and resumes. Left and right jump 25 words. Up and down change the rate by 25. F toggles full page, Esc leaves it.</dd>
+      <dt>SPEECH</dt><dd>Reads the text aloud a sentence at a time while the highlight follows the voice. Pick a voice from the menu beside the toggle; the list is whatever your browser and system have installed. While it is on, the rate is limited to 400 WPM; your faster rate returns when you turn it off.</dd>
+      <dt>KEYS</dt><dd>Space pauses and resumes. Left and right jump 25 words. Up and down change the rate by 25. F toggles full page, Esc leaves it. S toggles speech.</dd>
     </dl>
   </section>
 
-  <footer class="foot">Special thanks to the original creator of Speed Read, <a href="https://www.instagram.com/_stition/" target="_blank">_stition</a>.</footer>
+  <footer class="foot">Special thank to the original creator of Speed Read, _stition</footer>
 </div>
 
 <script>
 const SAMPLE = `The road out of Calloway ran straight for eleven miles before it remembered it was supposed to go somewhere. My grandfather called it the road to heaven, partly because of the way it climbed toward the ridge at the end, and partly because nobody he knew had ever come back down it with a complaint. We drove it in August, with the windows open and the radio giving up one station at a time. The fields on either side had been cut weeks before, and what was left stood pale and short, like the stubble on a tired man's jaw. He kept one hand on the wheel and the other out in the wind, turning it over as if he were weighing the afternoon. When I asked him how far it was, he said distance was a thing people worried about when they had not yet decided to arrive. Then he laughed at himself, coughed, and pointed ahead to where the road lifted and went white in the sun. Behind us the truck pulled a long brown curtain across everything we had passed, and for a while the whole county was nothing but light and dust.`;
 
 const $ = id => document.getElementById(id);
-const OPT = { mode:[1,2,3,4], align:['L','C','R'], lut:[0,20,40], cut:[0,60,120,240], spi:[40,20,10], lines:[5,9,15,3], zoom:[100,125,150,200,75], track:['PLACE','CENTER'] };
+const OPT = { mode:[1,2,3,4], align:['L','C','R'], lut:[0,20,40], cut:[0,60,120,240], spi:[40,20,10,0], lines:[5,9,15,3], zoom:[100,125,150,200,75], track:['PLACE','CENTER'] };
 const NAME = { mode:'Mode', align:'Align', lut:'LUT', cut:'Cut', spi:'SPI', lines:'Lines', zoom:'Zoom', track:'Track' };
 const LABEL = {
   mode:v=>v+'W', align:v=>v, lut:v=>v+'C',
   cut:v=>v?'Auto '+v+'ms':'Off', spi:v=>v+'MHz',
   lines:v=>v+'L', zoom:v=>v+'%', track:v=>v
 };
-const BLANK = { 40:0, 20:.15, 10:.3 };
+const BLANK = { 40:0, 20:.15, 10:.3, 0:.5 };
 const STEP = 25, KEY = 'speedread.v1';
+const SPEECH_MAX = 400;                        // fastest target rate while speech is on
+let unit = 175;                                // the current voice's WPM at 1x; starts as a guess, then measured
+let voices = [], voice = null, lastCancel = 0, kick = 0;
+const canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+const speechOn = () => canSpeak && !!S.speech;
+const rate = () => speechOn() ? Math.min(S.wpm, SPEECH_MAX) : S.wpm;
 
 const S = { title:'Road to Heaven', text:SAMPLE, wpp:300, wpm:425, mode:2, align:'L', lut:40, cut:60, spi:40, lines:5, zoom:100, track:'PLACE', view:'speed', pos:0, sample:true };
 try {
@@ -415,7 +432,8 @@ function paint() {
   if (S.view === 'focal') paintFocal(c);
   else { wordEl.textContent = c ? words.slice(c.start, c.start + c.n).join(' ') : 'Paste text below'; fit(); }
   const total = words.length, at = done ? total : (c ? c.start : 0), left = total - at;
-  $('rate').textContent = S.wpm;
+  $('rate').textContent = rate();
+  $('rateUnit').textContent = speechOn() && S.wpm >= SPEECH_MAX ? 'WPM max' : 'WPM';
   const wpp = Math.max(1, S.wpp);
   if (S.pmap && S.pmap.length) {
     let p = S.pmap[0].p;
@@ -426,7 +444,7 @@ function paint() {
     $('page').textContent = total ? Math.min(Math.floor(at / wpp) + 1, Math.ceil(total / wpp)) : 0;
     $('pages').textContent = '/ ' + Math.ceil(total / wpp);
   }
-  const sec = Math.round(left / S.wpm * 60);
+  const sec = Math.round(left / rate() * 60);
   const pad = n => String(n).padStart(2, '0');
   if (sec >= 3600) { $('remain').textContent = Math.floor(sec / 3600) + ':' + pad(Math.floor(sec % 3600 / 60)); $('remainUnit').textContent = 'H'; }
   else { $('remain').textContent = Math.floor(sec / 60) + ':' + pad(sec % 60); $('remainUnit').textContent = 'M'; }
@@ -452,22 +470,124 @@ function paintChrome() {
   live.classList.toggle('on', playing);
   live.textContent = playing ? '● Reading' : done ? '■ Finished' : (chunks[ci] && chunks[ci].start > 0) ? '○ Paused' : '▶ Start';
   live.setAttribute('aria-pressed', playing);
+  const sp = $('speech'), on = speechOn();
+  sp.classList.toggle('on', on);
+  sp.textContent = (on ? '● ' : '○ ') + 'Speech';
+  sp.setAttribute('aria-pressed', on);
+  sp.disabled = !canSpeak;
+  $('voice').hidden = !on || !voices.length;
+  sp.title = canSpeak ? 'Read each highlighted group aloud. Limits the rate to ' + SPEECH_MAX + ' WPM' : 'This browser has no speech synthesis';
   $('center').textContent = playing ? 'Center pause' : 'Center resume';
 }
 
-function clearTimers() { clearTimeout(timer); clearTimeout(blankTimer); }
+let guard = 0, tick = 0, utter = null;
+function clearTimers() {
+  clearTimeout(timer); clearTimeout(blankTimer); clearTimeout(guard); clearTimeout(kick); tick++;
+  if (canSpeak) { try { if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); lastCancel = performance.now(); } } catch (e) {} }
+}
+function loadVoices() {
+  if (!canSpeak) return;
+  try { voices = speechSynthesis.getVoices() || []; } catch (e) { voices = []; }
+  const sel = $('voice'), base = (navigator.language || 'en').split('-')[0].toLowerCase();
+  const mine = v => (v.lang || '').toLowerCase().startsWith(base);
+  sel.textContent = '';
+  sel.append(new Option('Default voice', ''));
+  const add = (label, list) => {
+    if (!list.length) return;
+    const g = document.createElement('optgroup'); g.label = label;
+    for (const v of list) g.append(new Option(v.name + ' · ' + v.lang, v.voiceURI));
+    sel.append(g);
+  };
+  add('Your language', voices.filter(mine));
+  add('Other languages', voices.filter(v => !mine(v)).sort((a, b) => a.lang.localeCompare(b.lang)));
+  sel.value = voices.some(v => v.voiceURI === S.voice) ? S.voice : '';
+  voice = voices.find(v => v.voiceURI === sel.value) || null;
+  paintChrome();
+}
+function setSpeech(on) {
+  S.speech = on && canSpeak;
+  if (S.speech && !voices.length) loadVoices();
+  paint(); paintChrome(); save();
+  restart();
+}
 function step() {
+  if (speechOn()) return speakFrom();
   paint();
-  const c = chunks[ci];
-  const dur = c.n * 60000 / S.wpm + c.pause;
+  const c = chunks[ci], my = ++tick;
+  const dur = c.n * 60000 / rate() + c.pause;
   expected += dur;
   const wait = Math.max(0, expected - performance.now());
   const frac = BLANK[S.spi];
   if (frac) blankTimer = setTimeout(setBlank, wait * (1 - frac));
   timer = setTimeout(() => {
+    if (my !== tick) return;
     if (ci >= chunks.length - 1) return finish();
     ci++; step();
   }, wait);
+}
+/* Speech: a whole phrase (to the end of the sentence, at most 30 words) is spoken as one utterance so the
+   voice keeps its natural cadence. The highlight follows the voice's word events where the voice sends
+   them, and a timer paced at the voice's measured speed where it does not. */
+const SENT_END = /[.!?…]["')\]”’]*$/;
+function speakFrom() {
+  paint();
+  const my = ++tick;
+  let e = ci, nw = chunks[ci].n;
+  while (e < chunks.length - 1) {
+    const c = chunks[e], nx = chunks[e + 1];
+    if (SENT_END.test(words[c.start + c.n - 1]) || paras.has(nx.start) || nw + nx.n > 30) break;
+    e++; nw += nx.n;
+  }
+  const first = chunks[ci].start, last = chunks[e].start + chunks[e].n, offs = [];
+  let text = '';
+  for (let i = first; i < last; i++) { if (i > first) text += ' '; offs.push(text.length); text += words[i]; }
+  const r = Math.max(.3, Math.min(3, rate() / unit));
+  const show = k => { if (k > ci && k <= e) { ci = k; paint(); } };
+  const after = () => {                                  // phrase finished: hold for Cut, then the next phrase
+    if (my !== tick) return;
+    clearTimeout(timer); clearTimeout(guard); clearTimeout(kick);
+    show(e);
+    if (e >= chunks.length - 1) return finish();
+    const go = () => { if (my !== tick) return; ci = e + 1; speakFrom(); };
+    if (chunks[e].pause) timer = setTimeout(go, chunks[e].pause); else go();
+  };
+  const walk = pace => {                                 // timed highlight; ends the phrase itself if nothing is heard
+    if (my !== tick) return;
+    timer = setTimeout(() => {
+      if (my !== tick) return;
+      if (ci < e) { show(ci + 1); walk(pace); }
+      else if (!heard) after();
+    }, chunks[ci].n * 60000 / pace);
+  };
+  let t0 = 0, heard = false, bound = false;
+  if (!/[\p{L}\p{N}]/u.test(text)) return walk(rate());
+  const started = () => { if (t0 || my !== tick) return; t0 = performance.now(); if (!bound) walk(r * unit); };
+  const u = utter = new SpeechSynthesisUtterance(text);  // kept in a variable so the browser does not drop it early
+  u.rate = r;
+  if (voice) { try { u.voice = voice; u.lang = voice.lang; } catch (err) {} }
+  u.onstart = () => { heard = true; started(); };
+  u.onboundary = ev => {
+    if (my !== tick || (ev.name && ev.name !== 'word')) return;
+    heard = bound = true; clearTimeout(timer);
+    let w = 0; while (w + 1 < offs.length && offs[w + 1] <= ev.charIndex) w++;
+    let k = ci; while (k < e && chunks[k].start + chunks[k].n <= first + w) k++;
+    show(k);
+  };
+  u.onend = () => {
+    if (my !== tick) return;
+    if (t0 && nw >= 6) { const m = nw * 60000 / (performance.now() - t0) / r; if (m > 60 && m < 500) unit = .5 * unit + .5 * m; }
+    after();
+  };
+  u.onerror = () => {                                    // the voice failed: finish this phrase silently, on time
+    if (my !== tick) return;
+    heard = false; bound = true; clearTimeout(timer); clearTimeout(kick); clearTimeout(guard);
+    bound = false; walk(rate());
+  };
+  const speak = () => { if (my !== tick) return; try { speechSynthesis.speak(u); } catch (err) { u.onerror(); } };
+  const since = performance.now() - lastCancel;
+  if (since < 90) setTimeout(speak, 90 - since); else speak();      // some browsers drop speech queued right after a cancel
+  kick = setTimeout(started, 1200);                                 // no start event: pace by timer anyway
+  guard = setTimeout(after, nw * 60000 / (r * unit) * 2 + 4000);    // no end event: move on
 }
 function restart() { if (!playing) return; clearTimers(); expected = performance.now(); step(); }
 async function play() {
@@ -495,7 +615,9 @@ function seek(pos) {
 }
 const skip = d => seek((chunks[ci] ? chunks[ci].start : 0) + d);
 function setRate(d) {
-  S.wpm = Math.max(50, Math.min(1500, S.wpm + d));
+  const v = Math.max(50, Math.min(speechOn() ? SPEECH_MAX : 1500, rate() + d));
+  if (v === rate()) return;                        // already at a limit: keep the stored rate as it is
+  S.wpm = v;
   paint(); save();
 }
 
@@ -510,6 +632,14 @@ document.querySelectorAll('[data-set]').forEach(b => b.addEventListener('click',
   if (playing) restart(); else paint();
 }));
 $('live').addEventListener('click', toggle);
+$('speech').addEventListener('click', () => setSpeech(!speechOn()));
+$('voice').addEventListener('change', () => {
+  S.voice = $('voice').value;
+  voice = voices.find(v => v.voiceURI === S.voice) || null;
+  unit = 175;
+  save(); restart();
+});
+if (canSpeak) { loadVoices(); try { speechSynthesis.onvoiceschanged = loadVoices; } catch (e) {} }
 $('center').addEventListener('click', toggle);
 stage.addEventListener('click', e => {
   const t = e.target;
@@ -825,10 +955,11 @@ async function epubExtract(d, first, last, fragStart, fragEnd, title) {
 }
 
 document.addEventListener('keydown', e => {
-  if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
   if (k === ' ') { if (e.target.tagName === 'BUTTON') return; e.preventDefault(); toggle(); }
   else if (k === 'f' || k === 'F') setFull(!isFull());
+  else if (k === 's' || k === 'S') setSpeech(!speechOn());
   else if (k === 'Escape' && isFull()) setFull(false);
   else if (k === 'ArrowRight') { e.preventDefault(); skip(STEP); }
   else if (k === 'ArrowLeft') { e.preventDefault(); skip(-STEP); }
